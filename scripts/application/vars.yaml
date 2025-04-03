@@ -1,0 +1,32 @@
+key: 
+  - who
+
+A:
+  - medicine
+  
+"Y": 
+  - week_12_relapse
+
+S: 
+  - project
+  
+W: 
+  - sex
+  - age
+  - xrace
+  - hwithdraw
+  - alcdisorder
+  - cocdisorder
+  - hasBrainDamage
+  - hasEpilepsy
+  - hasSchiz
+  - hasBipolar
+  - hasAnxPan
+  - hasMajorDep
+  - bamphetamine30_base
+  - bcannabis30_base
+  - bbenzo30_base
+  - ivdrug
+
+V2:
+  - homeless

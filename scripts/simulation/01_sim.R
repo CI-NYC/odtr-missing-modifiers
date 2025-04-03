@@ -135,4 +135,4 @@ for (i in 1:nrow(res)) {
 
 res$cate <- cates
 
-saveRDS(res, glue("../../data/sim/sim_drLearner_components_{alpha}_{n}_{id}.rds"))
+saveRDS(res, glue("../../data/sim/sim_drcLearner_{alpha}_{n}_{id}.rds"))

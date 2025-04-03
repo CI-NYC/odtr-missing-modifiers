@@ -22,5 +22,3 @@ map(c(500, 1000, 2500, 10000), summarize_sim) |>
   group_by(n) |> 
   summarize(median_abs_bias = median(abs_bias),
             median_mse = median(mse))
-
-            
