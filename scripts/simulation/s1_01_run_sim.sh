@@ -7,6 +7,6 @@
 
 module load R
 
-Rscript 01_sim.R $1 $2
+Rscript s1_01_sim.R $1 $2
 
 exit 0

@@ -2,7 +2,7 @@ key:
   - who
 
 A:
-  - medicine
+  - bupnx
   
 "Y": 
   - week_12_relapse
@@ -13,18 +13,20 @@ S:
 W: 
   - sex
   - age
-  - xrace
-  - hwithdraw
   - alcdisorder
-  - cocdisorder
   - hasBrainDamage
-  - hasEpilepsy
   - hasSchiz
   - hasBipolar
   - hasAnxPan
   - hasMajorDep
   - bamphetamine30_base
   - bcannabis30_base
+
+V1: 
+  - xrace
+  - hwithdraw
+  - cocdisorder
+  - hasEpilepsy
   - bbenzo30_base
   - ivdrug
 

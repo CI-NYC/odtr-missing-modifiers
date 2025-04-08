@@ -1,7 +1,9 @@
 library(data.table)
 
-tmp1 <- generate(1e7, 0.75, FALSE, 1)
-tmp0 <- generate(1e7, 0.75, FALSE, 0)
+source("R/dgp-02.R")
+
+tmp1 <- generate(1e7, FALSE, 1)
+tmp0 <- generate(1e7, FALSE, 0)
 
 setDT(tmp1)
 setDT(tmp0)
@@ -26,4 +28,3 @@ vals <- expand.grid(
 )
 
 vals$cate <- unlist(.mapply(CATE, dots = vals, MoreArgs = NULL))
-
