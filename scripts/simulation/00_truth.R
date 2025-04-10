@@ -1,6 +1,8 @@
 library(data.table)
 
-source("R/dgp-02.R")
+source("R/dgp-01.R")
+
+set.seed(54334)
 
 tmp1 <- generate(1e7, FALSE, 1)
 tmp0 <- generate(1e7, FALSE, 0)

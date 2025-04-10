@@ -13,21 +13,21 @@ if (id == "undefined" || id == "") id <- 1
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) == 0) {
-  args <- list(1500, 10)
+  args <- list(1e5, 2)
 }
 
 n <- as.numeric(args[[1]])
 folds <- as.numeric(args[[2]])
-alpha <- 0.75
 
-data <- generate(n, alpha)
+set.seed(id)
+data <- generate(n)
 
 crossfit_folds <- make_folds(data, V = folds)
 
-m <- matrix(nrow = n, ncol = 2)
-colnames(m) <- c("A=0", "A=1")
+b <- ms1 <- m <- matrix(nrow = n, ncol = 2)
+colnames(ms1) <- colnames(b) <- colnames(m) <- c("A=0", "A=1")
 
-g <- q <- e <- b <- th <- matrix(nrow = n, ncol = 1)
+gs <- g <- q <- th <- matrix(nrow = n, ncol = 1)
 
 for (v in 1:folds) {
   train <- training(data, crossfit_folds[[v]])
@@ -43,11 +43,18 @@ for (v in 1:folds) {
   m[valid_indexes, "A=0"] <- predict(m_model, newdata = valid_0)
   m[valid_indexes, "A=1"] <- predict(m_model, newdata = valid_1)
   
-  b_model <- cv_glmnet_formula(V2 ~ -1 + W1*W2*A*V1_1*V1_2*V1_3, 
-                 data = filter(train, Y == 1 & S == 1), 
-                 family = "binomial")
+  # ms_model <- cv_glmnet_formula(Y ~ -1 + W1*W2*A*V1_1*V1_2*V1_3, 
+  #                               data = filter(train, S == 1), family = "binomial")
+  # 
+  # ms1[valid_indexes, "A=0"] <- predict(ms_model, newdata = valid_0)
+  # ms1[valid_indexes, "A=1"] <- predict(ms_model, newdata = valid_1)
   
-  b[valid_indexes, 1] <- predict(b_model, newdata = valid)
+  b_model <- cv_glmnet_formula(V2 ~ -1 + W1*W2*A*V1_1*V1_2*V1_3, 
+                               data = filter(train, Y == 1 & S == 1), 
+                               family = "binomial")
+  
+  b[valid_indexes, "A=0"] <- predict(b_model, newdata = valid_0)
+  b[valid_indexes, "A=1"] <- predict(b_model, newdata = valid_1)
   
   q_model <- cv_glmnet_formula(V2 ~ W1*W2*V1_1*V1_2*V1_3, 
                                data = filter(train, S == 1), 
@@ -58,12 +65,12 @@ for (v in 1:folds) {
   g_model <- cv_glmnet_formula(A ~ -1 + W1*W2*V1_1*V1_2*V1_3, family = "binomial", data = train)
   g[valid_indexes, 1] <- predict(g_model, newdata = valid)
   
+  # gs_model <- cv_glmnet_formula(A ~ -1 + W1*W2*V1_1*V1_2*V1_3, family = "binomial", 
+  #                               data = filter(train, S == 1))
+  # gs[valid_indexes, 1] <- predict(gs_model, newdata = valid)
+  
   t_model <- cv_glmnet_formula(S ~ -1 + W1*W2*V1_1*V1_2*V1_3, family = "binomial", data = train)
   th[valid_indexes, 1] <- predict(t_model, newdata = valid)
-  
-  e_model <- cv_glmnet_formula(S ~  -1 + W1*W2*A*V1_1*V1_2*V1_3, family = "binomial", 
-                 data = filter(train, Y == 1))
-  e[valid_indexes, 1] <- predict(e_model, newdata = valid)
 }
 
 Ia1 <- as.numeric(data$A == 1)
@@ -78,50 +85,71 @@ Iy1 <- as.numeric(data$Y == 1)
 # isotonic calibrations
 m[, "A=0"] <- isoreg_with_xgboost(m[Ia1 == 0, "A=0"], data$Y[Ia1 == 0])(m[, "A=0"])
 m[, "A=1"] <- isoreg_with_xgboost(m[Ia1 == 1, "A=1"], data$Y[Ia1 == 1])(m[, "A=1"])
+# ms1[, "A=0"] <- isoreg_with_xgboost(ms1[Ia0*Is1 == 1, "A=0"], data$Y[Ia0*Is1 == 1])(ms1[, "A=0"])
+# ms1[, "A=1"] <- isoreg_with_xgboost(ms1[Ia1*Is1 == 1, "A=1"], data$Y[Ia1*Is1 == 1])(ms1[, "A=1"])
 g[, 1] <- isoreg_with_xgboost(g, data$A)(g)
+# gs[, 1] <- isoreg_with_xgboost(gs[Is1 == 1], data$A[Is1 == 1])(gs)
 q[, 1] <- isoreg_with_xgboost(q[Is1 == 1], Iv2_1[Is1 == 1])(q)
 th[, 1] <- isoreg_with_xgboost(th, Is1)(th)
-b[, 1] <- isoreg_with_xgboost(b[Iy1*Is1 == 1], Iv2_1[Iy1*Is1 == 1])(b)
-e[, 1] <- isoreg_with_xgboost(e[Iy1 == 1], Is1[Iy1 == 1])(e)
+b[, "A=0"] <- isoreg_with_xgboost(b[Ia0*Iy1*Is1 == 1, "A=0"], Iv2_1[Ia0*Iy1*Is1 == 1])(b[, "A=0"])
+b[, "A=1"] <- isoreg_with_xgboost(b[Ia1*Iy1*Is1 == 1, "A=1"], Iv2_1[Ia1*Iy1*Is1 == 1])(b[, "A=1"])
 
 # riesz representers
 alpha_m1 <- Ia1 / g
 alpha_m0 <- Ia0 / (1 - g)
+# alpha_ms1 <- Ia1 / gs
+# alpha_ms0 <- Ia0 / (1 - gs)
+alpha_ms1 <- alpha_m1
+alpha_ms0 <- alpha_m0
 alpha_q <- Is1 / th
-alpha_b <- Is1 / e
+alpha_b <- alpha_q
+# alpha_foo1 <- Iy1 / ms1[, "A=1"]
+# alpha_foo0 <- Iy1 / ms1[, "A=0"]
+alpha_foo1 <- Iy1 / m[, "A=1"]
+alpha_foo0 <- Iy1 / m[, "A=0"]
 
 # uncentered eifs
-D_m1_uc <- alpha_m1*(data$Y - m[, "A=1"]) + m[, "A=1"]
-D_m0_uc <- alpha_m0*(data$Y - m[, "A=0"]) + m[, "A=0"]
+D_k1_v21_uc <- alpha_foo1*alpha_ms1*alpha_b*(m[, "A=1"]*Iv2_1 - m[, "A=1"]*b[, "A=1"]) + 
+  alpha_m1*(b[, "A=1"]*data$Y - b[, "A=1"]*m[, "A=1"]) +
+  b[, "A=1"]*m[, "A=1"]
+
+D_k0_v21_uc <- alpha_foo0*alpha_ms0*alpha_b*(m[, "A=0"]*Iv2_1 - m[, "A=0"]*b[, "A=0"]) + 
+  alpha_m0*(b[, "A=0"]*data$Y - b[, "A=0"]*m[, "A=0"]) +
+  b[, "A=0"]*m[, "A=0"]
+
+D_k1_v20_uc <- alpha_foo1*alpha_ms1*alpha_b*(m[, "A=1"]*Iv2_0 - m[, "A=1"]*(1 - b[, "A=1"])) + 
+  alpha_m1*((1 - b[, "A=1"])*data$Y - (1 - b[, "A=1"])*m[, "A=1"]) +
+  (1 - b[, "A=1"])*m[, "A=1"]
+
+D_k0_v20_uc <- alpha_foo0*alpha_ms0*alpha_b*(m[, "A=0"]*Iv2_0 - m[, "A=0"]*(1 - b[, "A=0"])) + 
+  alpha_m0*((1 - b[, "A=0"])*data$Y - (1 - b[, "A=0"])*m[, "A=0"]) +
+  (1 - b[, "A=0"])*m[, "A=0"]
+
 D_q1_uc <- alpha_q*(Iv2_1 - q) + q
 D_q0_uc <- alpha_q*(Iv2_0 - (1 - q)) + (1 - q)
-D_b1_uc <- alpha_b*(Iv2_1 - b) + b
-D_b0_uc <- alpha_b*(Iv2_0 - (1 - b)) + (1 - b)
 
-mbar_model_1 <- glm(D_m1_uc ~ V1_1*V1_2*V1_3, data = data)
-mbar_model_0 <- glm(D_m0_uc ~ V1_1*V1_2*V1_3, data = data)
-qbar_model_1 <- glm(D_q1_uc ~ V1_1*V1_2*V1_3, data = data)
-qbar_model_0 <- glm(D_q0_uc ~ V1_1*V1_2*V1_3, data = data)
-bbar_model_1 <- glm(D_b1_uc ~ A*V1_1*V1_2*V1_3, data = data, subset = Iy1 == 1)
-bbar_model_0 <- glm(D_b0_uc ~ A*V1_1*V1_2*V1_3, data = data, subset = Iy1 == 1)
+# Fit pseudo regressions
+kappa_model_1_1 <- lm(D_k1_v21_uc ~ V1_1*V1_2*V1_3, data = data)
+kappa_model_1_0 <- lm(D_k0_v21_uc ~ V1_1*V1_2*V1_3, data = data)
+kappa_model_0_1 <- lm(D_k1_v20_uc ~ V1_1*V1_2*V1_3, data = data)
+kappa_model_0_0 <- lm(D_k0_v20_uc ~ V1_1*V1_2*V1_3, data = data)
+lambda_model_1 <- lm(D_q1_uc ~ V1_1*V1_2*V1_3, data = data)
+lambda_model_0 <- lm(D_q0_uc ~ V1_1*V1_2*V1_3, data = data)
 
 cate <- function(newdata) {
-  mbar_1 <- predict(mbar_model_1, newdata = newdata)
-  mbar_0 <- predict(mbar_model_0, newdata = newdata)
-  
   if (newdata$V2 == 1) {
-    bbar_1 <- predict(bbar_model_1, newdata = mutate(newdata, A = 1))
-    bbar_0 <- predict(bbar_model_1, newdata = mutate(newdata, A = 0))
-    qbar <- predict(qbar_model_1, newdata = newdata)
+    hbar_1 <- predict(kappa_model_1_1, newdata = newdata)
+    hbar_0 <- predict(kappa_model_1_0, newdata = newdata)
+    qbar <- predict(lambda_model_1, newdata = newdata)
   }
   
   if (newdata$V2 == 0) {
-    bbar_1 <- predict(bbar_model_0, newdata = mutate(newdata, A = 1))
-    bbar_0 <- predict(bbar_model_0, newdata = mutate(newdata, A = 0))
-    qbar <- predict(qbar_model_0, newdata = newdata)
+    hbar_1 <- predict(kappa_model_0_1, newdata = newdata)
+    hbar_0 <- predict(kappa_model_0_0, newdata = newdata)
+    qbar <- predict(lambda_model_0, newdata = newdata)
   }
   
-  (bbar_1*mbar_1 - bbar_0*mbar_0) / qbar
+  (hbar_1 - hbar_0) / qbar
 }
 
 res <- expand.grid(
@@ -135,4 +163,4 @@ for (i in 1:nrow(res)) {
 
 res$cate <- cates
 
-saveRDS(res, glue("../../data/sim/sim_drcLearner_{alpha}_{n}_{id}.rds"))
+saveRDS(res, glue("../../data/sim/sim_drcLearner_dag1_{n}_{id}.rds"))
