@@ -7,7 +7,7 @@ vars <- read_yaml("scripts/application/vars.yaml")
 
 # Extract homeless variable and randomization for CTN0051
 ctn51 <- 
-  read_csv("data/application/src/ctn51.csv") |> View()
+  read_csv("data/application/src/ctn51.csv") |> 
   select(PATID, homeless, TRT, IV_user) |> 
   mutate(homeless = ifelse(homeless == "Yes", 1, 0), 
          TRT = ifelse(TRT == "BUP-NX", 1, 0),
