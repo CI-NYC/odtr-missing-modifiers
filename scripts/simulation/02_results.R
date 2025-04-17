@@ -7,11 +7,12 @@ devtools::source_gist("https://gist.github.com/nt-williams/3afb56f503c7f98077722
 # load true values
 source("scripts/simulation/00_truth.R")
 
-dag <- 1
+dag <- 2
+estimator <- "plugin"
 
 summarize_sim <- function(n) {
   res <- 
-    read_zip_rds(glue("data/sim/sim_drcLearner_dag{dag}_{n}.zip")) |> 
+    read_zip_rds(glue("data/sim/sim_{estimator}_dag{dag}_{n}.zip")) |> 
     data.table::rbindlist()
   
   group_by(res, V1_1, V1_2, V1_3, V2) |>
