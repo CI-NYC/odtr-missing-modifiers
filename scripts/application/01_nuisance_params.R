@@ -13,10 +13,12 @@ vars <- data$vars
 data <- data$data
 
 # number of crossfit folds
-folds <- 10
+folds <- 20
 
 # superlearner library
 learners <- c("mean", "glm", "earth", "ranger", "bart", "cv_glmnet")
+
+set.seed(4534)
 
 crossfit_folds <- make_folds(data, V = folds)
 n <- nrow(data)
@@ -31,6 +33,8 @@ if (folds == 1) {
   crossfit_folds[[1]]$training_set <- crossfit_folds[[1]]$validation_set
 }
 
+set.seed(431)
+
 for (v in 1:folds) {
   train <- training(data, crossfit_folds[[v]])
   valid <- validation(data, crossfit_folds[[v]])
@@ -40,7 +44,7 @@ for (v in 1:folds) {
   valid_indexes <- crossfit_folds[[v]]$validation_set
   
   m_model <- mlr3superlearner(
-    data = train[, c(vars$Y, vars$A, vars$W)], 
+    data = train[, c(vars$Y, vars$A, vars$V1, vars$W)], 
     target = vars$Y, 
     outcome_type = "binomial",
     library = learners, 
@@ -52,7 +56,7 @@ for (v in 1:folds) {
   
   b_model <- mlr3superlearner(
     data = filter(train, week_12_relapse == 1 & project == 1) |> 
-      select(all_of(c(vars$V2, vars$A, vars$W))),
+      select(all_of(c(vars$V2, vars$A, vars$V1, vars$W))),
     target = vars$V2, 
     outcome_type = "binomial", 
     library = learners, 
@@ -64,7 +68,7 @@ for (v in 1:folds) {
   
   q_model <- mlr3superlearner(
     data = filter(train, project == 1) |> 
-      select(all_of(c(vars$V2, vars$W))), 
+      select(all_of(c(vars$V2, vars$V1, vars$W))), 
     target = vars$V2,
     outcome_type = "binomial",
     library = learners,
@@ -95,7 +99,7 @@ for (v in 1:folds) {
   gs[valid_indexes, 1] <- predict(gs_model, newdata = valid)
   
   t_model <- mlr3superlearner(
-    data = select(train, all_of(c(vars$S, vars$W))), 
+    data = select(train, all_of(c(vars$S, vars$V1, vars$W))), 
     target = vars$S, 
     outcome_type = "binomial",
     library = learners,
@@ -148,7 +152,7 @@ list(
   r1 = r1,
   r0 = r0
 ) |> 
-  saveRDS("data/application/drv/nuisance-parameters-calibrated.rds")
+  saveRDS("data/application/drv/nuisance-parameters-calibrated-updated.rds")
 
 # riesz representers
 alpha_g1 <- Ia1 / g
@@ -176,6 +180,8 @@ D_k0_v20_uc <- alpha_r0*(m[, "A=0"]*Iv2_0 - m[, "A=0"]*(1 - b[, "A=0"])) +
 
 D_q1_uc <- alpha_t*(Iv2_1 - q) + q
 D_q0_uc <- alpha_t*(Iv2_0 - (1 - q)) + (1 - q)
+
+set.seed(7563)
 
 # fit pseudo regressions
 kappa_model_1_1 <- fit_xgboost_with_tuning(
@@ -223,4 +229,19 @@ list(
   lambda_model_1 = lambda_model_1,
   lambda_model_0 = lambda_model_0
 ) |> 
-  saveRDS("data/application/drv/psuedo-regression-tuned-xgboost-models.rds")
+  saveRDS("data/application/drv/psuedo-regression-tuned-xgboost-models-updated.rds")
+
+# ignoring homeless status ------------------------------------------------
+
+alpha <- (2*data$bupnx - 1) / (data$bupnx*g + (1 - data$bupnx)*(1 - g))
+D_ate <- alpha * (data$week_12_relapse - (data$bupnx*m[, "A=1"] + (1 - data$bupnx)*m[, "A=0"])) + 
+  m[, "A=1"] - m[, "A=0"]
+
+set.seed(53443)
+model_cate <- fit_xgboost_with_tuning(
+  mutate(data, D_ate = D_ate) |> 
+    select(D_ate, all_of(vars$V1)), 
+  "D_ate", 100
+)
+
+saveRDS(model_cate, "data/application/drv/psuedo-regression-tuned-xgboost-cate-model.rds")
