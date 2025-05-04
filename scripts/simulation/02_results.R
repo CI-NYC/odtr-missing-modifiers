@@ -8,7 +8,7 @@ devtools::source_gist("https://gist.github.com/nt-williams/3afb56f503c7f98077722
 source("scripts/simulation/00_truth.R")
 
 dag <- 2
-estimator <- "plugin"
+estimator <- "numeratorLearner"
 
 summarize_sim <- function(n) {
   res <- 
@@ -17,9 +17,9 @@ summarize_sim <- function(n) {
   
   group_by(res, V1_1, V1_2, V1_3, V2) |>
     rename(v1_1 = V1_1, v1_2 = V1_2, v1_3 = V1_3, v2 = V2) |>
-    left_join(rename(vals, truth = cate)) |> 
-    summarize(abs_bias = abs(mean(cate) - mean(truth)),
-              rmse = sqrt(mean((cate - truth)^2))) |> 
+    left_join(rename(vals, truth = pseudo_cate)) |> 
+    summarize(abs_bias = abs(mean(psuedo_cate) - mean(truth)),
+              rmse = sqrt(mean((psuedo_cate - truth)^2))) |> 
     ungroup() |> 
     mutate(n = n)
 }
