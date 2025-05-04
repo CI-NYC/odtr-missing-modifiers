@@ -18,8 +18,13 @@ mean_of_y <- function(a, v1_1, v1_2, v1_3, v2) {
   }
 }
 
-CATE <- function(v1_1, v1_2, v1_3, v2) {
-  mean_of_y(1, v1_1, v1_2, v1_3, v2) - mean_of_y(0, v1_1, v1_2, v1_3, v2)
+prob_v2 <- function(v2, v1_1, v1_2, v1_3) {
+  tmp1[V1_1 == v1_1 & V1_2 == v1_2 & V1_3 == v1_3, mean(V2 == v2)]
+}
+
+pseudo_CATE <- function(v1_1, v1_2, v1_3, v2) {
+  cate <- mean_of_y(1, v1_1, v1_2, v1_3, v2) - mean_of_y(0, v1_1, v1_2, v1_3, v2)
+  round(cate * prob_v2(v2, v1_1, v1_2, v1_3), 3)
 }
 
 vals <- expand.grid(
@@ -29,4 +34,4 @@ vals <- expand.grid(
   v2 = c(0, 1)
 )
 
-vals$cate <- unlist(.mapply(CATE, dots = vals, MoreArgs = NULL))
+vals$pseudo_cate <- unlist(.mapply(pseudo_CATE, dots = vals, MoreArgs = NULL))
