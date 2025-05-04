@@ -121,42 +121,42 @@ D_k0_v20_uc <- alpha_foo0*alpha_ms0*alpha_b*(m[, "A=0"]*Iv2_0 - m[, "A=0"]*(1 - 
   alpha_m0*((1 - b[, "A=0"])*data$Y - (1 - b[, "A=0"])*m[, "A=0"]) +
   (1 - b[, "A=0"])*m[, "A=0"]
 
-D_q1_uc <- alpha_q*(Iv2_1 - q) + q
-D_q0_uc <- alpha_q*(Iv2_0 - (1 - q)) + (1 - q)
+# D_q1_uc <- alpha_q*(Iv2_1 - q) + q
+# D_q0_uc <- alpha_q*(Iv2_0 - (1 - q)) + (1 - q)
 
 # Fit pseudo regressions
 kappa_model_1_1 <- lm(D_k1_v21_uc ~ V1_1*V1_2*V1_3, data = data)
 kappa_model_1_0 <- lm(D_k0_v21_uc ~ V1_1*V1_2*V1_3, data = data)
 kappa_model_0_1 <- lm(D_k1_v20_uc ~ V1_1*V1_2*V1_3, data = data)
 kappa_model_0_0 <- lm(D_k0_v20_uc ~ V1_1*V1_2*V1_3, data = data)
-lambda_model_1 <- lm(D_q1_uc ~ V1_1*V1_2*V1_3, data = data)
-lambda_model_0 <- lm(D_q0_uc ~ V1_1*V1_2*V1_3, data = data)
+# lambda_model_1 <- lm(D_q1_uc ~ V1_1*V1_2*V1_3, data = data)
+# lambda_model_0 <- lm(D_q0_uc ~ V1_1*V1_2*V1_3, data = data)
 
-cate <- function(newdata) {
+pseudo_cate <- function(newdata) {
   if (newdata$V2 == 1) {
     hbar_1 <- predict(kappa_model_1_1, newdata = newdata)
     hbar_0 <- predict(kappa_model_1_0, newdata = newdata)
-    qbar <- predict(lambda_model_1, newdata = newdata)
+    # qbar <- predict(lambda_model_1, newdata = newdata)
   }
   
   if (newdata$V2 == 0) {
     hbar_1 <- predict(kappa_model_0_1, newdata = newdata)
     hbar_0 <- predict(kappa_model_0_0, newdata = newdata)
-    qbar <- predict(lambda_model_0, newdata = newdata)
+    # qbar <- predict(lambda_model_0, newdata = newdata)
   }
   
-  (hbar_1 - hbar_0) / qbar
+  hbar_1 - hbar_0
 }
 
 res <- expand.grid(
   V1_1 = 0:1, V1_2 = 0:1, V1_3 = 0:1, V2 = 0:1
 )
 
-cates <- vector("numeric", nrow(res))
+pseudo_cates <- vector("numeric", nrow(res))
 for (i in 1:nrow(res)) {
-  cates[i] <- cate(res[i, ])
+  pseudo_cates[i] <- pseudo_cate(res[i, ])
 }
 
-res$cate <- cates
+res$psuedo_cate <- pseudo_cates
 
-saveRDS(res, glue("../../data/sim/sim_drcLearner_dag2_{n}_{id}.rds"))
+saveRDS(res, glue("../../data/sim/sim_numeratorLearner_dag2_{n}_{id}.rds"))
